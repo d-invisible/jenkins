@@ -22,12 +22,12 @@ pipeline {
         stage('Locate project') {
             steps {
                 script {
-                    if (fileExists('practice/practice-1/code/pom.xml')) {
+                    if (fileExists('pom.xml')) {
+                        env.PROJECT_DIR = '.'
+                    } else if (fileExists('practice/practice-1/code/pom.xml')) {
                         env.PROJECT_DIR = 'practice/practice-1/code'
-                    } else if (fileExists('code/pom.xml')) {
-                        env.PROJECT_DIR = 'code'
                     } else {
-                        error 'Could not find the practice-1 code directory.'
+                        error 'Could not find the p1-simple-java-app Maven project.'
                     }
                 }
             }
