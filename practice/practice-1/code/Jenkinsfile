@@ -24,8 +24,10 @@ pipeline {
                 script {
                     if (fileExists('pom.xml')) {
                         env.PROJECT_DIR = '.'
+                        env.PROJECT_PREFIX = ''
                     } else if (fileExists('practice/practice-1/code/pom.xml')) {
                         env.PROJECT_DIR = 'practice/practice-1/code'
+                        env.PROJECT_PREFIX = 'practice/practice-1/code/'
                     } else {
                         error 'Could not find the p1-simple-java-app Maven project.'
                     }
@@ -47,14 +49,14 @@ pipeline {
             }
             post {
                 always {
-                    junit testResults: "${env.PROJECT_DIR}/target/surefire-reports/*.xml", allowEmptyResults: true
+                    junit testResults: "${env.PROJECT_PREFIX}target/surefire-reports/*.xml", allowEmptyResults: true
                 }
             }
         }
 
         stage('Publish artifact') {
             steps {
-                archiveArtifacts artifacts: "${env.PROJECT_DIR}/target/practice-1.jar", fingerprint: true
+                archiveArtifacts artifacts: "${env.PROJECT_PREFIX}target/practice-1.jar", fingerprint: true
             }
         }
 
