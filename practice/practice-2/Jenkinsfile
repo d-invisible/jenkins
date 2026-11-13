@@ -1,0 +1,144 @@
+pipeline {
+    agent {
+        label 'practice-agent'
+    }
+
+    parameters {
+        booleanParam(
+            name: 'RUN_APP_ON_AGENT',
+            defaultValue: false,
+            description: 'After a successful build and test, start the app on this agent VM.'
+        )
+    }
+
+    environment {
+        PROJECT_DIR = 'practice/practice-1/code'
+        APP_PORT = '9090'
+        PID_FILE = '.practice-1.pid'
+        APP_LOG = 'practice-1.log'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+    }
+
+    stages {
+        stage('Checkout on agent') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Verify agent tools') {
+            steps {
+                sh '''
+                    set -eu
+                    echo "Agent: $NODE_NAME"
+                    echo "Workspace: $WORKSPACE"
+                    java -version
+                    mvn -version
+                    git --version
+                    curl --version | head -n 1
+                '''
+            }
+        }
+
+        stage('Build and test') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    sh 'mvn --batch-mode clean verify'
+                }
+            }
+            post {
+                always {
+                    junit testResults: "${env.PROJECT_DIR}/target/surefire-reports/*.xml"
+                }
+            }
+        }
+
+        stage('Publish artifact') {
+            steps {
+                archiveArtifacts artifacts: "${env.PROJECT_DIR}/target/practice-1.jar", fingerprint: true
+            }
+        }
+
+        stage('Run app on agent') {
+            when {
+                expression {
+                    params.RUN_APP_ON_AGENT
+                }
+            }
+            steps {
+                dir(env.PROJECT_DIR) {
+                    sh '''
+                        set -eu
+
+                        if [ -f "$PID_FILE" ]; then
+                            old_pid="$(cat "$PID_FILE")"
+                            old_cwd="$(readlink "/proc/$old_pid/cwd" 2>/dev/null || true)"
+                            old_command="$(tr '\\0' ' ' < "/proc/$old_pid/cmdline" 2>/dev/null || true)"
+
+                            if [ "$old_cwd" = "$PWD" ] && printf '%s' "$old_command" | grep -Fq 'practice-1.jar'; then
+                                echo "Stopping previous practice-1 process $old_pid"
+                                kill "$old_pid"
+                                for attempt in $(seq 1 10); do
+                                    kill -0 "$old_pid" 2>/dev/null || break
+                                    sleep 1
+                                done
+                                if kill -0 "$old_pid" 2>/dev/null; then
+                                    echo "Previous process $old_pid did not stop."
+                                    exit 1
+                                fi
+                            fi
+                            rm -f "$PID_FILE"
+                        fi
+
+                        rm -f "$APP_LOG"
+                        JENKINS_NODE_COOKIE=dontKillMe nohup env PORT="$APP_PORT" \
+                            java -jar target/practice-1.jar > "$APP_LOG" 2>&1 &
+                        echo $! > "$PID_FILE"
+                        echo "Started practice-1 with PID $(cat "$PID_FILE") on port $APP_PORT"
+                    '''
+
+                    sh '''
+                        set -eu
+                        app_pid="$(cat "$PID_FILE")"
+                        for attempt in $(seq 1 30); do
+                            if ! kill -0 "$app_pid" 2>/dev/null; then
+                                echo "Application process $app_pid stopped before becoming healthy."
+                                cat "$APP_LOG" || true
+                                exit 1
+                            fi
+                            if curl --fail --silent "http://127.0.0.1:$APP_PORT/health" | grep -Fxq 'UP'; then
+                                echo "Health check passed: http://127.0.0.1:$APP_PORT/health"
+                                exit 0
+                            fi
+                            sleep 1
+                        done
+
+                        echo 'Application did not become healthy.'
+                        cat "$APP_LOG" || true
+                        exit 1
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Practice 2 pipeline succeeded on the agent VM.'
+            script {
+                if (params.RUN_APP_ON_AGENT) {
+                    echo "The app is listening on the agent VM at port ${env.APP_PORT}."
+                }
+            }
+        }
+        failure {
+            echo 'Practice 2 failed. Check the failed stage and Console Output.'
+        }
+    }
+}
+

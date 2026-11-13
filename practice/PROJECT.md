@@ -7,11 +7,12 @@ This directory contains small projects for learning build, test, and deployment 
 The exercises should add one major concept at a time:
 
 1. Java, Maven, JUnit, and a basic Jenkins pipeline
-2. The same workflow using Gradle
-3. Automatic deployment to a server without Docker
-4. Branches, pull requests, and multibranch pipelines
-5. Docker image builds and container deployment
-6. Artifact repositories, environments, approvals, and rollback
+2. Build, test, and run the same app on a Jenkins agent VM
+3. The same build workflow using Gradle
+4. Automatic deployment to a server without Docker
+5. Branches, pull requests, and multibranch pipelines
+6. Docker image builds and container deployment
+7. Artifact repositories, environments, approvals, and rollback
 
 Keep an exercise small enough that its CI/CD concept remains easy to see.
 
