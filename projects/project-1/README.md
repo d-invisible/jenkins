@@ -16,6 +16,7 @@ Open [architecture.drawio](architecture.drawio) in draw.io to edit the architect
   
 ![Project Architecture updated](architecture-updated.svg)
 
+![build success pipeline jenkins](build-success.png)
 
 ## Project layout
 
