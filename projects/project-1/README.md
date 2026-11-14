@@ -22,13 +22,13 @@ Open [architecture.drawio](architecture.drawio) in draw.io to edit the architect
 ```text
 projects/project-1/
 |-- architecture.drawio
-|-- Jenkinsfile
 |-- README.md
 |-- scripts/
 |   |-- controller-setup.sh
 |   |-- agent-setup.sh
 |   `-- target-setup.sh
 `-- code/
+    |-- Jenkinsfile
     |-- build.gradle
     |-- gradle.properties
     |-- gradlew
@@ -106,11 +106,13 @@ git commit -m "Add project-1 Spring Boot Gradle pipeline"
 git push
 ```
 
-The Jenkins Script Path will be:
+Use the Jenkins Script Path that matches the repository configured for the job:
 
-```text
-projects/project-1/Jenkinsfile
-```
+| Repository | Script Path |
+|---|---|
+| `d-invisible/jenkins` | `projects/project-1/code/Jenkinsfile` |
+| `d-invisible/java-springboot-gradle-jenkins-proj-1` | `code/Jenkinsfile` |
+| `d-invisible/java-springboot-gradle-app` | `Jenkinsfile` |
 
 ## Step 3: Configure the Jenkins controller VM
 
@@ -257,7 +259,7 @@ The first dependency scan downloads vulnerability data and can take longer. Late
 6. Repository URL: your GitHub repository.
 7. Add repository credentials if it is private.
 8. Branch Specifier: `*/main`.
-9. Script Path: `projects/project-1/Jenkinsfile`.
+9. Script Path: use the path from the repository table in Step 2.
 10. Save.
 
 Run **Build Now** once. This loads the parameters and the `githubPush()` trigger from the Jenkinsfile.

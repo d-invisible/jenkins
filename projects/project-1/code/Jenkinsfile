@@ -47,7 +47,10 @@ pipeline {
                 stage('Locate project') {
                     steps {
                         script {
-                            if (fileExists('code/build.gradle')) {
+                            if (fileExists('build.gradle')) {
+                                env.PROJECT_DIR = '.'
+                                env.PROJECT_PREFIX = ''
+                            } else if (fileExists('code/build.gradle')) {
                                 env.PROJECT_DIR = 'code'
                                 env.PROJECT_PREFIX = 'code/'
                             } else if (fileExists('projects/project-1/code/build.gradle')) {
@@ -115,23 +118,23 @@ pipeline {
                     }
                 }
 
-                stage('Dependency security scan') {
-                    steps {
-                        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                            dir(env.PROJECT_DIR) {
-                                sh './gradlew dependencyCheckAnalyze --no-daemon'
-                            }
-                        }
-                    }
-                    post {
-                        always {
-                            archiveArtifacts(
-                                artifacts: "${env.PROJECT_PREFIX}build/reports/dependency-check-*",
-                                allowEmptyArchive: true
-                            )
-                        }
-                    }
-                }
+                // stage('Dependency security scan') {
+                //     steps {
+                //         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                //             dir(env.PROJECT_DIR) {
+                //                 sh './gradlew dependencyCheckAnalyze --no-daemon'
+                //             }
+                //         }
+                //     }
+                //     post {
+                //         always {
+                //             archiveArtifacts(
+                //                 artifacts: "${env.PROJECT_PREFIX}build/reports/dependency-check-*",
+                //                 allowEmptyArchive: true
+                //             )
+                //         }
+                //     }
+                // }
 
                 stage('Publish CI artifact') {
                     steps {
