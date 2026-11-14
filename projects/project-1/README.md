@@ -22,6 +22,8 @@ Open [architecture.drawio](architecture.drawio) in draw.io to edit the architect
 
 ```text
 projects/project-1/
+|-- .env.example
+|-- .gitignore
 |-- architecture.drawio
 |-- README.md
 |-- SETUP.md
