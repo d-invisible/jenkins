@@ -23,7 +23,7 @@ Open [architecture.drawio](architecture.drawio) in draw.io to edit the architect
 projects/project-1/
 |-- architecture.drawio
 |-- Jenkinsfile
-|-- project-1.md
+|-- README.md
 |-- scripts/
 |   |-- controller-setup.sh
 |   |-- agent-setup.sh
