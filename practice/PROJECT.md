@@ -8,8 +8,8 @@ The exercises should add one major concept at a time:
 
 1. Java, Maven, JUnit, and a basic Jenkins pipeline
 2. Build, test, and run the same app on a Jenkins agent VM
-3. The same build workflow using Gradle
-4. Automatic deployment to a server without Docker
+3. Build a WAR on an agent and deploy it to a Tomcat target VM
+4. Repeat the build workflow using Gradle
 5. Branches, pull requests, and multibranch pipelines
 6. Docker image builds and container deployment
 7. Artifact repositories, environments, approvals, and rollback

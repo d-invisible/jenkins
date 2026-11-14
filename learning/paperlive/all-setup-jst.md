@@ -1,0 +1,242 @@
+# Install & Configure Jenkins Server :
+
+- Refer to that tools/Service's Official Documentation.
+
+  https://www.jenkins.io/doc/book/installing/linux/
+
+## Launch AWS EC2 Instance - AMI - Ubuntu 24.04v
+
+`t2.micro` - Instance Type
+
+## Allow All Traffic for Demo!
+
+Updated Inbound Rule - Port 8080
+
+## 1. Install the pre-requisites :::
+
+### Install Jdk:
+
+```bash
+sudo -i
+sudo apt update -y
+
+sudo apt install git -y                     # To install git if required
+git --version
+
+sudo apt install openjdk-21-jre -y          # previous version
+java -version
+```
+
+## 2. Install the Actual tool :::
+
+### Install Jenkins:
+
+```bash
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+sudo apt update
+
+sudo apt install jenkins -y
+```
+
+## 3. Perform Post_Installation Activities :::
+
+```bash
+jenkins --version
+
+systemctl status jenkins
+
+# systemctl stop jenkins
+# systemctl start jenkins
+# systemctl restart jenkins
+# systemctl enable jenkins
+
+/var/lib/jenkins         # Default Installation Dir of Jenkin on Linux Box
+```
+
+### Open web browser :
+
+```text
+http://<Public_IP_Address>:8080/
+
+E.g.: http://13.127.48.220:8080/
+```
+
+```bash
+sudo -i
+
+cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+---
+
+# Configure Slave Node1 for Java Maven App. :
+
+## Launch an Ubuntu Machine : v24.04
+
+```bash
+sudo -i
+
+apt update -y
+```
+
+## Install Java ::
+
+```bash
+sudo apt update -y
+sudo apt install openjdk-21-jre -y
+java -version
+```
+
+## Install GIT :
+
+```bash
+sudo apt install git -y
+git --version
+```
+
+## Install Maven - Build Tool :
+
+https://maven.apache.org/install.html
+
+```bash
+sudo apt install maven -y
+
+mvn --version
+```
+
+## Create User in Jenkins Slave Machine & Create SSH Keys
+
+SSH Keys --> is composed of public and private keys
+
+### Add User :
+
+```bash
+useradd devopsadmin -s /bin/bash -m -d /home/devopsadmin
+
+su - devopsadmin
+
+#ssh-keygen
+
+#for Ubuntu ::
+#ssh-keygen -t rsa -b 2048 -m PEM                                #ubuntu 20.04
+
+ssh-keygen -t ecdsa -b 521                                      #ubuntu 22.04 or higher version of ubuntu
+
+ls ~/.ssh
+
+#You should see following two files:
+
+#id_ecdsa - private key
+#id_ecdsa.pub - public
+
+#cat id_rsa.pub > authorized_keys
+
+cat id_ecdsa.pub > authorized_keys
+
+chmod 600 /home/devopsadmin/.ssh/*
+```
+
+## Login to Jenkins - Manage Jenkins - Attach the Slave Node to jenkins Master
+
+- Credentials --> private key of DevOps_Admin User from Slave Node
+
+Goto to Manage Jenkins
+
+- Select Credential
+
+- Save the private key of devopsadmin user from slave Node in Jenkins Credential Manager
+
+```text
+jenkins_Slave1_Cred
+```
+
+Goto to Manage Jenkins
+
+- Select Nodes
+  - On Nodes Dashboard, Click on New Node
+    - Give Node Name, and choose permanent agent.
+
+### SSH Connection Parameters :::
+
+- User_Name
+- Host_Name
+- Credentials
+
+---
+
+# Install TOMCAT Application Server on Ubuntu :::
+
+## Launch New Node - Ubuntu - 24.04 ami
+
+Enable port 8080
+
+Install Tomcat :: https://tomcat.apache.org/download-80.cgi
+
+https://tomcat.apache.org/
+
+```bash
+sudo -i
+apt update -y
+apt-get install default-jdk -y
+java --version
+cd /opt/
+wget https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.99/bin/apache-tomcat-8.5.99.tar.gz
+tar -xvzf /opt/apache-tomcat-8.5.99.tar.gz
+mv apache-tomcat-8.5.99 tomcat
+cd tomcat/bin/
+./startup.sh
+```
+
+## Open web browser :
+
+```text
+http://<Public_IP_Address>:8080/
+
+E.g.: http://13.127.8.53:8080/
+```
+
+---
+
+## Add User :
+
+```bash
+useradd devopsadmin -s /bin/bash -m -d /home/devopsadmin
+
+su - devopsadmin
+
+#ssh-keygen
+
+#for Ubuntu ::
+#ssh-keygen -t rsa -b 2048 -m PEM                                #ubuntu 20.04
+
+ssh-keygen -t ecdsa -b 521                                      #ubuntu 22.04 or higher version of ubuntu
+
+ls ~/.ssh
+
+#You should see following two files:
+
+#id_ecdsa - private key
+#id_ecdsa.pub - public
+
+#cat id_rsa.pub > authorized_keys
+
+cat id_ecdsa.pub > authorized_keys
+
+chmod 600 /home/devopsadmin/.ssh/*
+```
+
+## make devopsadmin user as a owner to tomcat dir :
+
+```bash
+chown -R devopsadmin /opt/tomcat
+```
+
+Publish Over SSH Plugin is used to copy the artifacts from Jenkins Slave Node to Tomcat Server
+
+Install Publish Over SSH Plugin in Jenkins Master.

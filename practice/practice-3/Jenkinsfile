@@ -1,0 +1,163 @@
+pipeline {
+    agent {
+        label 'maven-agent'
+    }
+
+    parameters {
+        booleanParam(
+            name: 'DEPLOY_TO_TARGET',
+            defaultValue: false,
+            description: 'Deploy the tested WAR to the Tomcat target VM.'
+        )
+        string(
+            name: 'TARGET_HOST',
+            defaultValue: '',
+            description: 'Private IP or DNS name of the Tomcat target VM.',
+            trim: true
+        )
+        string(
+            name: 'TARGET_USER',
+            defaultValue: 'deployer',
+            description: 'SSH deployment user on the target VM.',
+            trim: true
+        )
+    }
+
+    environment {
+        PROJECT_DIR = 'practice/practice-3/code'
+        WAR_FILE = 'practice-3.war'
+        TOMCAT_PORT = '8080'
+        TOMCAT_CONTEXT = 'practice-3'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+    }
+
+    stages {
+        stage('Checkout on Maven agent') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Verify agent') {
+            steps {
+                sh '''
+                    set -eu
+                    echo "Build node: $NODE_NAME"
+                    echo "Workspace: $WORKSPACE"
+                    java -version
+                    mvn -version
+                    git --version
+                    ssh -V
+                    command -v scp
+                    curl --version | head -n 1
+                '''
+            }
+        }
+
+        stage('Build and test WAR') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    sh 'mvn --batch-mode clean verify'
+                }
+            }
+            post {
+                always {
+                    junit testResults: "${env.PROJECT_DIR}/target/surefire-reports/*.xml"
+                }
+            }
+        }
+
+        stage('Publish WAR') {
+            steps {
+                archiveArtifacts artifacts: "${env.PROJECT_DIR}/target/${env.WAR_FILE}", fingerprint: true
+            }
+        }
+
+        stage('Validate deployment settings') {
+            when {
+                expression {
+                    params.DEPLOY_TO_TARGET
+                }
+            }
+            steps {
+                script {
+                    if (!params.TARGET_HOST || !(params.TARGET_HOST ==~ /[A-Za-z0-9.-]+/)) {
+                        error 'TARGET_HOST must be a non-empty IP address or DNS name.'
+                    }
+                    if (!(params.TARGET_USER ==~ /[a-z_][a-z0-9_-]*/)) {
+                        error 'TARGET_USER contains unsupported characters.'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy WAR to Tomcat') {
+            when {
+                expression {
+                    params.DEPLOY_TO_TARGET
+                }
+            }
+            steps {
+                dir(env.PROJECT_DIR) {
+                    sshagent(credentials: ['target-vm-ssh']) {
+                        sh '''
+                            set -eu
+                            ssh_options="-o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10"
+
+                            scp $ssh_options "target/$WAR_FILE" \
+                                "$TARGET_USER@$TARGET_HOST:/tmp/$WAR_FILE"
+
+                            ssh $ssh_options "$TARGET_USER@$TARGET_HOST" \
+                                "sudo /usr/bin/install -o tomcat -g tomcat -m 0644 /tmp/$WAR_FILE /var/lib/tomcat10/webapps/$WAR_FILE && sudo /usr/bin/systemctl restart tomcat10 && rm -f /tmp/$WAR_FILE"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Target health check') {
+            when {
+                expression {
+                    params.DEPLOY_TO_TARGET
+                }
+            }
+            steps {
+                sh '''
+                    set -eu
+                    health_url="http://$TARGET_HOST:$TOMCAT_PORT/$TOMCAT_CONTEXT/health"
+
+                    for attempt in $(seq 1 60); do
+                        if curl --fail --silent "$health_url" | grep -Fxq 'UP'; then
+                            echo "Target health check passed: $health_url"
+                            exit 0
+                        fi
+                        sleep 1
+                    done
+
+                    echo "Target did not become healthy: $health_url"
+                    exit 1
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Practice 3 pipeline succeeded.'
+            script {
+                if (params.DEPLOY_TO_TARGET) {
+                    echo "Application URL: http://${params.TARGET_HOST}:${env.TOMCAT_PORT}/${env.TOMCAT_CONTEXT}/"
+                }
+            }
+        }
+        failure {
+            echo 'Practice 3 failed. Check the failed stage and Console Output.'
+        }
+    }
+}
+

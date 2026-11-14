@@ -1,0 +1,28 @@
+pipeline {
+    agent {
+        label 'agent-1-maven'
+    }    
+    
+     environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+    }
+    
+    stages {
+        stage('scm-checkout') {
+            steps {
+                git changelog: false, poll: false, url: 'https://github.com/d-invisible/java-webapp-project'
+            }
+        }
+        stage('maven build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('deploy to tomcat server') {
+            steps {
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'tomcatserver', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: 'target', sourceFiles: 'target/*.war')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+    }
+}
