@@ -1,0 +1,58 @@
+pipeline {
+    agent { label 'jenkins-agent-node-label' }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        LOCAL_IMAGE = 'project-gradle-docker-2'
+        DOCKERHUB_REPOSITORY = 'my-app'
+    }
+
+    stages {
+        stage('SCM checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/d-invisible/java-springboot-gradle-app'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh '''
+                    set -eu
+                    chmod +x gradlew
+                    ./gradlew clean build --max-workers=1 --stacktrace
+                '''
+                archiveArtifacts artifacts: 'build/libs/project-1.jar', fingerprint: true
+            }
+        }
+        stage('Docker image') {
+            steps {
+                sh '''
+                    set -eu
+                    docker build --pull -t "$LOCAL_IMAGE:$BUILD_NUMBER" .
+                    docker image inspect "$LOCAL_IMAGE:$BUILD_NUMBER" --format='Built {{.Id}}'
+                '''
+            }
+        }
+        stage('Docker push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_TOKEN'
+                )]) {
+                    sh '''
+                        set -eu
+                        image="$DOCKER_USER/$DOCKERHUB_REPOSITORY:$BUILD_NUMBER"
+                        trap 'docker logout >/dev/null 2>&1 || true' EXIT
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker tag "$LOCAL_IMAGE:$BUILD_NUMBER" "$image"
+                        docker push "$image"
+                    '''
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,41 @@
+pipeline {
+    agent { label 'jenkins-agent-node-label' }
+
+    stages {
+        stage('scm checkout'){
+            steps{
+                git branch: 'main', url: 'https://github.com/d-invisible/java-springboot-gradle-app'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'chmod +x gradlew'
+                sh './gradlew clean build --max-workers=1 --stacktrace'
+                archiveArtifacts artifacts: 'build/libs/project-1.jar',
+                                 fingerprint: true
+            }
+        }
+        stage('Docker image'){
+            steps{
+                sh 'docker build -t project-gradle-docker-1:${BUILD_NUMBER} .'
+                sh 'docker images project-gradle-docker-1'
+            }
+        }
+        stage('Docker push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_TOKEN'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker tag project-gradle-docker-1:${BUILD_NUMBER} "$DOCKER_USER/my-app:${BUILD_NUMBER}"
+                        docker push "$DOCKER_USER/my-app:${BUILD_NUMBER}"
+                        docker logout
+                    '''
+                }
+            }
+        }
+    }
+}

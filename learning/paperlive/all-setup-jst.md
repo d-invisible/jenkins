@@ -137,7 +137,8 @@ ls ~/.ssh
 
 #cat id_rsa.pub > authorized_keys
 
-cat id_ecdsa.pub > authorized_keys
+cat id_ecdsa.pub > authorized_keys  # wrong
+cat ~/.ssh/id_ecdsa.pub >> ~/.ssh/authorized_keys
 
 chmod 600 /home/devopsadmin/.ssh/*
 ```
